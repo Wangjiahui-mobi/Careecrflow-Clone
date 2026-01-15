@@ -3,6 +3,7 @@
   "outputDirectory": "dist/public",
   "devCommand": "pnpm dev",
   "installCommand": "pnpm install",
+  "ignoreCommand": "exit 0",
   "framework": null,
   "rewrites": [
     {
