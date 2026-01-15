@@ -1,28 +1,32 @@
-import "dotenv/config";
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../server/routers";
-import { createContext } from "../server/_core/context";
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const app = express();
+export default async function handler(
+  request: VercelRequest,
+  response: VercelResponse,
+) {
+  // Set CORS headers
+  response.setHeader('Access-Control-Allow-Credentials', 'true');
+  response.setHeader('Access-Control-Allow-Origin', '*');
+  response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  response.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
 
-// Configure body parser
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  if (request.method === 'OPTIONS') {
+    response.status(200).end();
+    return;
+  }
 
-// tRPC API
-app.use(
-  "/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  })
-);
+  // Health check
+  if (request.url === '/api/health') {
+    return response.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  }
 
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
-
-// Export for Vercel serverless
-export default app;
+  // For now, return a simple response
+  return response.status(200).json({ 
+    message: 'API is running',
+    path: request.url,
+    method: request.method
+  });
+}
