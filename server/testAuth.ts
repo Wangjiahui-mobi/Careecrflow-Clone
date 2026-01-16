@@ -67,20 +67,20 @@ testAuthRouter.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Ensure test user exists in database
-    await db.upsertUser({
-      openId: testUser.openId,
-      name: testUser.name,
-      email: testUser.email,
-      loginMethod: 'test',
-      lastSignedIn: new Date(),
-    });
+    // Skip database operations in mock mode
+    // await db.upsertUser({
+    //   openId: testUser.openId,
+    //   name: testUser.name,
+    //   email: testUser.email,
+    //   loginMethod: 'test',
+    //   lastSignedIn: new Date(),
+    // });
 
     // Update role if needed
-    const existingUser = await db.getUserByOpenId(testUser.openId);
-    if (existingUser && existingUser.role !== testUser.role) {
-      // Role update would need a separate function, skip for now
-    }
+    // const existingUser = await db.getUserByOpenId(testUser.openId);
+    // if (existingUser && existingUser.role !== testUser.role) {
+    //   // Role update would need a separate function, skip for now
+    // }
 
     // Create session token
     const sessionToken = await sdk.createSessionToken(testUser.openId, {

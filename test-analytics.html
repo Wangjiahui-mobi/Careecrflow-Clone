@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Testing</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .log {
+      background: #f8f9fa;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .success { color: #28a745; }
+    .error { color: #dc3545; }
+    .info { color: #17a2b8; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Analytics Tracking Test</h1>
+  
+  <div class="test-section">
+    <h2>1. Tab Click Tracking</h2>
+    <button onclick="trackTabClick('Jobs')">Click Jobs Tab</button>
+    <button onclick="trackTabClick('Resume')">Click Resume Tab</button>
+    <button onclick="trackTabClick('Interview')">Click Interview Tab</button>
+  </div>
+
+  <div class="test-section">
+    <h2>2. Interview Start Tracking</h2>
+    <button onclick="trackInterviewStart()">Start Mock Interview</button>
+  </div>
+
+  <div class="test-section">
+    <h2>3. Job Search Tracking</h2>
+    <button onclick="trackJobSearch()">Search Jobs</button>
+  </div>
+
+  <div class="test-section">
+    <h2>4. Paywall Tracking</h2>
+    <button onclick="trackPaywallShown()">Show Paywall</button>
+    <button onclick="trackPaywallClick()">Click Upgrade Button</button>
+  </div>
+
+  <div class="test-section">
+    <h2>5. Batch Events Test</h2>
+    <button onclick="sendBatchEvents()">Send 10 Events</button>
+    <button onclick="flushEvents()">Flush Events Now</button>
+  </div>
+
+  <div class="test-section">
+    <h2>📊 Event Log</h2>
+    <div id="log" class="log"></div>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <script>
+    // Simple Analytics SDK (inline for testing)
+    class AnalyticsSDK {
+      constructor() {
+        this.sessionId = this.getOrCreateSessionId();
+        this.queue = [];
+        this.apiUrl = '/api/trpc/analytics.track';
+      }
+
+      getOrCreateSessionId() {
+        let sessionId = sessionStorage.getItem('analytics_session_id');
+        if (!sessionId) {
+          sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          sessionStorage.setItem('analytics_session_id', sessionId);
+        }
+        return sessionId;
+      }
+
+      track(eventName, properties = {}) {
+        const event = {
+          event_name: eventName,
+          properties: {
+            ...properties,
+            timestamp: new Date().toISOString(),
+          },
+        };
+        this.queue.push(event);
+        log(`📍 Tracked: ${eventName}`, 'info');
+        log(JSON.stringify(properties, null, 2), 'info');
+      }
+
+      async flush() {
+        if (this.queue.length === 0) {
+          log('⚠️ No events to flush', 'info');
+          return;
+        }
+
+        const events = [...this.queue];
+        this.queue = [];
+
+        const payload = {
+          sessionId: this.sessionId,
+          events,
+          pageUrl: window.location.href,
+          pageTitle: document.title,
+          referrer: document.referrer,
+          userAgent: navigator.userAgent,
+        };
+
+        try {
+          log(`🚀 Flushing ${events.length} events...`, 'info');
+          
+          const response = await fetch(this.apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const result = await response.json();
+          log(`✅ Events sent successfully!`, 'success');
+          log(JSON.stringify(result, null, 2), 'success');
+        } catch (error) {
+          // Put events back in queue on error
+          this.queue.unshift(...events);
+          log(`❌ Failed to send events: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    const analytics = new AnalyticsSDK();
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = type;
+      entry.textContent = `[${time}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+
+    // Test Functions
+    function trackTabClick(tabName) {
+      analytics.track('tab_click', {
+        tab_name: tabName,
+        tab_id: tabName.toLowerCase(),
+        tab_index: 0,
+        page_section: '/test',
+      });
+    }
+
+    function trackInterviewStart() {
+      analytics.track('interview_start', {
+        interview_type: 'topic_practice',
+        job_title: 'Software Engineer',
+        company: 'Google',
+        difficulty: 'medium',
+      });
+    }
+
+    function trackJobSearch() {
+      analytics.track('job_search', {
+        query: 'Software Engineer',
+        results_count: 25,
+        filters: {
+          location: 'San Francisco',
+          work_type: 'remote',
+        },
+        search_source: 'linkedin_search',
+      });
+    }
+
+    function trackPaywallShown() {
+      analytics.track('paywall_shown', {
+        trigger_location: 'test_page',
+        trigger_reason: 'manual_test',
+        feature_name: 'job_search',
+        usage_count: 5,
+      });
+    }
+
+    function trackPaywallClick() {
+      analytics.track('paywall_click', {
+        button_type: 'upgrade',
+        plan_name: 'Monthly',
+        plan_price: 19.9,
+        trigger_location: 'test_page',
+      });
+    }
+
+    function sendBatchEvents() {
+      for (let i = 1; i <= 10; i++) {
+        analytics.track('test_event', {
+          event_number: i,
+          test_type: 'batch',
+        });
+      }
+      log(`📦 Queued 10 events (total in queue: ${analytics.queue.length})`, 'info');
+    }
+
+    function flushEvents() {
+      analytics.flush();
+    }
+
+    // Auto-flush every 10 seconds for testing
+    setInterval(() => {
+      if (analytics.queue.length > 0) {
+        analytics.flush();
+      }
+    }, 10000);
+
+    log('🎯 Analytics Testing Page Loaded', 'success');
+    log(`Session ID: ${analytics.sessionId}`, 'info');
+  </script>
+</body>
+</html>
